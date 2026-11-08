@@ -113,7 +113,7 @@ def main():
     os.environ["NXF_LOG_FILE"] = f"{reports_dir}/logs/nextflow_log_{timestamp}.txt"
     os.environ["NXF_CACHE_DIR"] = f"{args.output_dir}/.nextflow_cache"
 
-    ## main.nf reads atlas/ relative to the launch directory:
+    ## main.nf reads atlas/ relative:
     os.chdir(pipeline_dir)
 
     if args.print_logs:
@@ -123,7 +123,6 @@ def main():
         select.select([sys.stdin], [], [], 10)
         os.execvp("nextflow", ["nextflow", "clean", "-f"])
 
-    ## Rebuild the input CSV on every run so added or removed subjects are picked up:
     input_csv = f"{args.output_dir}/spreadsheets/{args.dataset}_input_data.csv"
     os.makedirs(os.path.dirname(input_csv), exist_ok=True)
     python = sys.executable if args.python_env is None else f"{args.python_env}/bin/python"
@@ -136,6 +135,9 @@ def main():
     logging.info(f"Collecting input files for subjects in {args.subjects}")
     if subprocess.run(csv_cmd).returncode != 0:
         sys.exit("Failed to collect the input files.")
+
+    atlas_pngs_dir = f"{args.output_dir}/QC_HTML/atlas_pngs"
+    shutil.copytree(f"{pipeline_dir}/atlas/full/pngs", atlas_pngs_dir, dirs_exist_ok=True)
 
     ## Launch Nextflow:
     nf_cmd = ["nextflow", "run", "main.nf", "-profile", args.profile, "-queue-size", str(args.n_parallel), "-ansi-log", str(args.ansi_log).lower(),
@@ -159,7 +161,7 @@ def main():
         "cortical_atlas_mni": f"{pipeline_dir}/atlas/HCP-MMP.nii.gz",
         "mni_qa_template_1mm": f"{pipeline_dir}/atlas/human_qa.1mm.nii.gz",
         "mni_qa_template_2mm": f"{pipeline_dir}/atlas/human_qa.2mm.nii.gz",
-        "atlas_bundle_pngs": f"{pipeline_dir}/atlas/full/pngs",
+        "atlas_bundle_pngs": atlas_pngs_dir,
         "bundle_atlas_dir": f"{pipeline_dir}/atlas/sparse",
         "dsi_studio_bin": args.dsi_studio_bin,
         "python_env": args.python_env
