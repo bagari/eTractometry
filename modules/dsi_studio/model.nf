@@ -8,8 +8,8 @@ process RECONSTRUCT_GQI {
     storeDir "${params.output_dir}/subjects/${subject}"
 
     input:
-    // tuple val(subject), val(is_sz), path(bval), path(bvec), path(dwi), path(mask), val(has_mask), val(resample_to)
-    tuple val(subject), val(is_sz), path(bval, stageAs: 'aux.bval'), path(bvec, stageAs: 'aux.bvec'), path(dwi), path(mask, stageAs: 'aux.mask'), val(has_mask), val(resample_to)
+    // tuple val(subject), val(is_sz), path(bval), path(bvec), path(b_table), val(has_b_table), path(dwi), path(mask), val(has_mask), val(resample_to)
+    tuple val(subject), val(is_sz), path(bval, stageAs: 'aux.bval'), path(bvec, stageAs: 'aux.bvec'), path(b_table, stageAs: 'aux.b_table.txt'), val(has_b_table), path(dwi), path(mask, stageAs: 'aux.mask'), val(has_mask), val(resample_to)
     val metrics
 
     output:
@@ -25,13 +25,13 @@ process RECONSTRUCT_GQI {
 
     script:
     def sz_name = "${subject}.sz"
+    def gradient_args = has_b_table ? "--b_table=\"${b_table}\"" : "--bval=\"${bval}\" --bvec=\"${bvec}\""
     def src_step = is_sz
         ? "[ \"${dwi}\" = \"${sz_name}\" ] || ln -sf \"${dwi}\" \"${sz_name}\""
         : """dsi_studio --action=src \\
         --thread_count=${task.cpus} \\
         --source=\"${dwi}\" \\
-        --bval=\"${bval}\" \\
-        --bvec=\"${bvec}\" \\
+        ${gradient_args} \\
         --output=\"${sz_name}\""""
     
     // Brain mask is optional with .sz

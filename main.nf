@@ -53,11 +53,14 @@ workflow {
             def dwi      = file(row.dwi).toRealPath()
             def is_sz    = row.dwi.toString().endsWith('.sz')
             def has_mask = row.mask ? true : false
+            def has_b_table = row.b_table ? true : false
             tuple(
                 row.subject,
                 is_sz,
-                is_sz ? dwi : file(row.bval).toRealPath(),
-                is_sz ? dwi : file(row.bvec).toRealPath(),
+                is_sz || has_b_table ? dwi : file(row.bval).toRealPath(),
+                is_sz || has_b_table ? dwi : file(row.bvec).toRealPath(),
+                has_b_table ? file(row.b_table).toRealPath() : dwi,
+                has_b_table,
                 dwi,
                 has_mask ? file(row.mask).toRealPath() : dwi,
                 has_mask,

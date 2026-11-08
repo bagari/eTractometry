@@ -50,7 +50,7 @@ python tract_pipeline.py ... --profile slurm,apptainer --queue <partition> \
 | `--output_dir` | Output directory for all workflow results. |
 | `--dataset` | Cohort or site name. |
 | `--subjects` | Text file of subject IDs. |
-| `--dwi`, `--mask`, `--bval`, `--bvec` | Path patterns with `{subject}`. `--dwi` is NIfTI or a DSI-Studio `.sz`; mask, bval and bvec are required for NIfTI. |
+| `--dwi`, `--mask`, `--bval`, `--bvec`, `--b_table` | Path patterns with `{subject}`. `--dwi` is NIfTI or a DSI-Studio `.sz`; NIfTI needs a mask and either a DSI-Studio b-table or bval and bvec. `--b_table` takes precedence over `--bval`/`--bvec`. |
 | `--atlas` | eTractometry/atlas path. |
 | `--profile` | One executor (`local`, `slurm`, `sge`, `pbs`, `pbspro`, `lsf`) and one engine (`docker`, `apptainer`, `singularity`), e.g. `local,docker`. |
 | `--container` | Docker image (default `etractometry:1.0.0`), or `.sif` file. |

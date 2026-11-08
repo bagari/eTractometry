@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument("--mask", help="Brain mask path. Required for NIfTI DWI; optional for .sz, where DSI-Studio creates one.")
     parser.add_argument("--bval", help="b-value file (FSL format) path. Required for NIfTI DWI.")
     parser.add_argument("--bvec", help="b-vector file (FSL format gradient directions) path. Required for NIfTI DWI.")
+    parser.add_argument("--b_table", help="DSI-Studio b-table path (b-value and x y z per volume). Used instead of --bval/--bvec when given.")
 
     parser.add_argument("--profile", help="Comma-separated Nextflow profiles: one executor (local, sge, slurm, pbs, pbspro, lsf), and one engine that provides DSI-Studio and the Python tools (conda, apptainer, hybrid) e.g. local,conda.")
     parser.add_argument("--queue", help="Cluster queue. Required for cluster executors.")
@@ -43,7 +44,7 @@ def parse_args():
     parser.add_argument("--clean", action="store_true", help="Remove all Nextflow files of the latest run, including logs and cache, and exit.")
     args = parser.parse_args()
 
-    for name in ("output_dir", "subjects", "dwi", "mask", "bval", "bvec", "dsi_studio_bin", "python_env"):
+    for name in ("output_dir", "subjects", "dwi", "mask", "bval", "bvec", "b_table", "dsi_studio_bin", "python_env"):
         if getattr(args, name) is not None:
             setattr(args, name, os.path.abspath(getattr(args, name)))
     if shutil.which("nextflow") is None:
@@ -56,8 +57,8 @@ def parse_args():
         parser.error(f"the following arguments are required: {', '.join(missing)}")
     if not args.dwi.endswith((".nii", ".nii.gz", ".sz")):
         parser.error("--dwi must be a NIfTI (.nii / .nii.gz) or DSI-Studio source (.sz) path.")
-    if not args.dwi.endswith(".sz") and None in (args.mask, args.bval, args.bvec):
-        parser.error("--mask, --bval and --bvec are required for NIfTI input.")
+    if not args.dwi.endswith(".sz") and (args.mask is None or (args.b_table is None and None in (args.bval, args.bvec))):
+        parser.error("--mask and either --b_table or --bval/--bvec are required for NIfTI input.")
 
     profiles = args.profile.split(",")
     executors = [p for p in profiles if p in ("local", "sge", "slurm", "pbs", "pbspro", "lsf")]
@@ -127,7 +128,7 @@ def main():
     os.makedirs(os.path.dirname(input_csv), exist_ok=True)
     python = sys.executable if args.python_env is None else f"{args.python_env}/bin/python"
     csv_cmd = [python, "bin/get_dMRI_data.py", "--subject_IDs", args.subjects, "--dwi_format", args.dwi, "--output", input_csv]
-    for name in ("mask", "bval", "bvec"):
+    for name in ("mask", "bval", "bvec", "b_table"):
         if getattr(args, name) is not None:
             csv_cmd += [f"--{name}_format", getattr(args, name)]
     if args.extra_maps is not None:
