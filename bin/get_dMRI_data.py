@@ -21,7 +21,9 @@ def resample_to(dwi_path):
 
 
 def one_match(pattern, subject, label):
-    matches = [m for m in glob(pattern.format(subject=subject)) if os.path.exists(m)]
+    # {sub} and {ses} split a session ID such as sub-01_ses-1; {ses} is empty for sub-01.
+    sub, _, ses = subject.partition("_")
+    matches = [m for m in glob(pattern.format(subject=subject, sub=sub, ses=ses)) if os.path.exists(m)]
     assert len(matches) <= 1, (
         f"Expected one {label} file for subject {subject}, found: {matches}. "
         f"Please use a more specific --{label.lower()}_format pattern."
@@ -31,7 +33,7 @@ def one_match(pattern, subject, label):
 
 parser = argparse.ArgumentParser(description="Collect dMRI input file paths for a list of subjects.")
 parser.add_argument("--subject_IDs", required=True, help="Text file with subject IDs.")
-parser.add_argument("--dwi_format", required=True, help="DWI file pattern (use {subject}).")
+parser.add_argument("--dwi_format", required=True, help="DWI file pattern (use {subject}, or {sub} and {ses} for session IDs such as sub-01_ses-1).")
 parser.add_argument("--mask_format", default=None, help="Mask file pattern. Optional for .sz input.")
 parser.add_argument("--bvec_format", default=None, help="Bvec file pattern. Required for NIfTI, ignored for .sz.")
 parser.add_argument("--bval_format", default=None, help="Bval file pattern. Required for NIfTI, ignored for .sz.")
