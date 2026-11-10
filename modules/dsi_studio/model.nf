@@ -29,7 +29,7 @@ process RECONSTRUCT_GQI {
     def src_step = is_sz
         ? "[ \"${dwi}\" = \"${sz_name}\" ] || ln -sf \"${dwi}\" \"${sz_name}\""
         : """dsi_studio --action=src \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --source=\"${dwi}\" \\
         ${gradient_args} \\
         --output=\"${sz_name}\""""
@@ -53,13 +53,13 @@ process RECONSTRUCT_GQI {
 
     # QC source
     dsi_studio --action=qc \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --source="${subject}.sz" \\
         --output="${subject}.sz.txt"
 
     # Make GQI model
     dsi_studio --action=rec \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --source="${subject}.sz" \\
         ${mask_arg} \\
         --method=4 --param=1.25 --other_output=all \\
@@ -69,13 +69,13 @@ process RECONSTRUCT_GQI {
 
     # QC GQI
     dsi_studio --action=qc \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --source="${subject}.odf.gqi.fz" \\
         --output="${subject}.odf.gqi.fz.txt"
 
     # Warp QA to MNI space (for registration QC)
     dsi_studio --action=exp \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --source="${subject}.odf.gqi.fz" \\
         --export=qa,iso --export_to_mni
     mv "${subject}.odf.gqi.fz.qa.nii.gz" "${subject}.qa.mni.nii.gz"
@@ -83,7 +83,7 @@ process RECONSTRUCT_GQI {
 
     # Export DSI-Studio's transform as ANTs-style 1Warp / 1InverseWarp NIFTIs.
     dsi_studio --action=reg \\
-        --thread_count=${task.cpus} \\
+        --thread_count=${task.cpus - 1} \\
         --to="${subject}.qa.mni.nii.gz,${subject}.iso.mni.nii.gz" \\
         --mapping="${subject}.odf.gqi.fz.human.mz" \\
         --output_mapping="${subject}.transform.nii.gz"
@@ -93,7 +93,7 @@ process RECONSTRUCT_GQI {
     IFS=',' read -ra REQ_METRICS <<< "${metrics}"
     for m in "\${REQ_METRICS[@]}"; do
         dsi_studio --action=exp \\
-            --thread_count=${task.cpus} \\
+            --thread_count=${task.cpus - 1} \\
             --source="${subject}.odf.gqi.fz" \\
             --export="\${m}" \\
         || echo "Warning: metric '\${m}' unavailable for ${subject}; skipping" >&2
