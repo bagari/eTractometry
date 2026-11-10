@@ -17,17 +17,15 @@ process META_TRACTOMETRY {
     path "MeTA/${bundle}/${subject}_${bundle}.done",                                                                       emit: done
 
     script:
-    def maps_list = maps.join(" ")
     def masks = [
         local_all  : "${subject}_${bundle}_${num_segments}_segments_local_all.nii.gz",
         local_core : "${subject}_${bundle}_${num_segments}_segments_local_core.nii.gz",
         global_all : "${subject}_${bundle}.nii.gz",
         global_core: "${subject}_${bundle}_global_core.nii.gz",
     ]
-    def profiles = masks.collect { roi, mask -> """
-        volumetric_profile --subject ${subject} --bundle ${bundle} --mask "${mask}" --map "\${map}" --output ./
-        mv "${subject}_${bundle}_segments_average.csv" "${subject}_${bundle}_\${metric}_segments_average_${roi}.csv"
-    """ }.join()
+    // Each map is named by the metric in its file name, e.g. <subject>.odf.gqi.fz.dti_fa.nii.gz -> dti_fa
+    def map_args  = maps.collect { m -> "\"${m.name.split(/\./)[4]}=${m}\"" }.join(' ')
+    def mask_args = masks.collect { roi, mask -> "\"${roi}=${mask}\"" }.join(' ')
     """
     # parcellate bundle mask
     meta --subject ${subject} \\
@@ -43,10 +41,7 @@ process META_TRACTOMETRY {
         --percent 0.1
 
     # Along-tract (local) and whole-bundle (global) profiles of each map
-    for map in ${maps_list}; do
-        metric=\$(basename "\${map}" | cut -d"." -f5)
-        ${profiles}
-    done
+    volumetric_profile --subject ${subject} --bundle ${bundle} --map ${map_args} --mask ${mask_args} --output ./
 
     # MeTA QC
     dive --background 1 --glass_brain --mode cli --zoom 1.5 \\
