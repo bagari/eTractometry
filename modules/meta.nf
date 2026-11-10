@@ -11,13 +11,23 @@ process META_TRACTOMETRY {
     tuple val(subject), val(bundle), path(sbundle), path(maps), path(bundle_mask), path(mbundle), path(inverse_warp), path(qa_mni_ref), val(num_segments), val(segmentation_method), val(cam_views)
 
     output:
-    tuple val(subject), val(bundle), path("MeTA/${bundle}/${subject}_${bundle}_*_segments_average_local_*.csv"),           emit: meta_profiles
+    tuple val(subject), val(bundle), path("MeTA/${bundle}/${subject}_${bundle}_*_segments_average_*.csv"),                 emit: meta_profiles
     tuple val(subject), val(bundle), path("MeTA/${bundle}/${subject}_${bundle}*.nii.gz"), optional: true,                  emit: meta_volumes
     tuple val(subject), val(bundle), path("qc_images/meta/${bundle}/${subject}_${bundle}_local_core_*.png"),               emit: meta_qc_pngs
     path "MeTA/${bundle}/${subject}_${bundle}.done",                                                                       emit: done
 
     script:
     def maps_list = maps.join(" ")
+    def masks = [
+        local_all  : "${subject}_${bundle}_${num_segments}_segments_local_all.nii.gz",
+        local_core : "${subject}_${bundle}_${num_segments}_segments_local_core.nii.gz",
+        global_all : "${subject}_${bundle}.nii.gz",
+        global_core: "${subject}_${bundle}_global_core.nii.gz",
+    ]
+    def profiles = masks.collect { roi, mask -> """
+        volumetric_profile --subject ${subject} --bundle ${bundle} --mask "${mask}" --map "\${map}" --output ./
+        mv "${subject}_${bundle}_segments_average.csv" "${subject}_${bundle}_\${metric}_segments_average_${roi}.csv"
+    """ }.join()
     """
     # parcellate bundle mask
     meta --subject ${subject} \\
@@ -32,29 +42,10 @@ process META_TRACTOMETRY {
         --output ./ \\
         --percent 0.1
 
-    # Along tract profiles
+    # Along-tract (local) and whole-bundle (global) profiles of each map
     for map in ${maps_list}; do
         metric=\$(basename "\${map}" | cut -d"." -f5)
-
-        # local_all mask
-        volumetric_profile \\
-            --subject ${subject} \\
-            --bundle ${bundle} \\
-            --mask "${subject}_${bundle}_${num_segments}_segments_local_all.nii.gz" \\
-            --map \${map} \\
-            --output "./"
-        mv "${subject}_${bundle}_segments_average.csv" \\
-            "${subject}_${bundle}_\${metric}_segments_average_local_all.csv"
-
-        # local_core mask
-        volumetric_profile \\
-            --subject ${subject} \\
-            --bundle ${bundle} \\
-            --mask "${subject}_${bundle}_${num_segments}_segments_local_core.nii.gz" \\
-            --map \${map} \\
-            --output "./"
-        mv "${subject}_${bundle}_segments_average.csv" \\
-            "${subject}_${bundle}_\${metric}_segments_average_local_core.csv"
+        ${profiles}
     done
 
     # MeTA QC
@@ -72,7 +63,7 @@ process META_TRACTOMETRY {
     mv ${subject}_${bundle}_local_core_*.png qc_images/meta/${bundle}/ 2>/dev/null || true
 
     # Completion marker:
-    if ls MeTA/${bundle}/${subject}_${bundle}_*_segments_average_local_*.csv >/dev/null 2>&1; then
+    if ls MeTA/${bundle}/${subject}_${bundle}_*_segments_average_*.csv >/dev/null 2>&1; then
         touch MeTA/${bundle}/${subject}_${bundle}.done
     else
         echo "Warning: META_TRACTOMETRY produced no CSVs for ${subject}/${bundle}" >&2

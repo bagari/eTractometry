@@ -16,7 +16,7 @@ process AGGREGATE_META_PROFILES {
     val  dataset
 
     output:
-    path "${dataset}_MeTA_${metric}_local_${roi}.csv", emit: combined
+    path "${dataset}_MeTA_${metric}_${roi}.csv", emit: combined
 
     script:
     """
