@@ -24,10 +24,9 @@ def one_match(pattern, subject, label):
     # {sub} and {ses} split a session ID such as sub-01_ses-1; {ses} is empty for sub-01.
     sub, _, ses = subject.partition("_")
     matches = [m for m in glob(pattern.format(subject=subject, sub=sub, ses=ses)) if os.path.exists(m)]
-    assert len(matches) <= 1, (
-        f"Expected one {label} file for subject {subject}, found: {matches}. "
-        f"Please use a more specific --{label.lower()}_format pattern."
-    )
+    if len(matches) > 1:
+        print(f"Skipping {label} for {subject}: {len(matches)} files match {matches}", file=sys.stderr)
+        return None
     return matches[0] if matches else None
 
 
